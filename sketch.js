@@ -35,10 +35,12 @@ function preload(){
   highlight_img = loadImage('assets/highlight.png');
 
   myFont = loadFont('assets/JudgesSC.ttf');
+
 }
 
 
 function setup() {
+
   createCanvas(windowWidth, windowHeight);
   pixelDensity(1);
   frameRate(60);
@@ -73,8 +75,19 @@ function draw() {
 
   background(5);
 
+
   // Translate everything to the middle of the screen
   translate(middleScreenOffset, 0);
+
+  if (windowHeight*1.5 > windowWidth){
+    // This is a vertical screen. Scale everything down -_-
+    translate((middleScreenOffset/(windowWidth*1.5))-middleScreenOffset, 0);
+    scale(windowWidth/windowHeight/1.5);
+    
+  }
+
+
+
 
 
   // In-game
@@ -143,18 +156,19 @@ function draw() {
 function mouseClicked() {
 
   var mouseXOffset = mouseX - middleScreenOffset;
+  var mouseYOffset = mouseY;
 
   // Make a move
   if (currentGameState.charAt(0) == myPlayer && (appState == 1 || appState == 3) && animationFrame == -1) {
-    if (mouseY > windowHeight / 2 && mouseY < windowHeight * (9 / 10)) {
+    if (mouseYOffset > windowHeight / 2 && mouseYOffset < windowHeight * (9 / 10)) {
       if (mouseXOffset > (windowHeight * 1.5) / 3 && mouseXOffset < (windowHeight * 1.5) / 3 + (windowHeight * 1.5) / 9) {
-        placeDie(currentGameState, myPlayer, 0);
+        currentGameState = placeDie(currentGameState, myPlayer, 0);
       }
       else if (mouseXOffset > (windowHeight * 1.5) / 3 + (windowHeight * 1.5) / 9 && mouseXOffset < (windowHeight * 1.5) / 3 + 2 * (windowHeight * 1.5) / 9) {
-        placeDie(currentGameState, myPlayer, 1);
+        currentGameState = placeDie(currentGameState, myPlayer, 1);
       }
       else if (mouseXOffset > (windowHeight * 1.5) / 3 + 2 * (windowHeight * 1.5) / 9 && mouseXOffset < (windowHeight * 1.5) / 3 + 3 * (windowHeight * 1.5) / 9) {
-        placeDie(currentGameState, myPlayer, 2);
+        currentGameState = placeDie(currentGameState, myPlayer, 2);
       }
 
     }
@@ -171,24 +185,24 @@ function mouseClicked() {
 
   // Title screen
   if (appState == 0) {
-    if (mouseXOffset > (windowHeight*1.5)/31 &&  mouseXOffset < (windowHeight*1.5)/4   &&   mouseY > windowHeight/2.1 && mouseY < windowHeight/1.9){
+    if (mouseXOffset > (windowHeight*1.5)/31 &&  mouseXOffset < (windowHeight*1.5)/4   &&   mouseYOffset > windowHeight/2.1 && mouseYOffset < windowHeight/1.9){
       appState = 7;
       // How to play
     }
 
-    if (mouseXOffset > (windowHeight*1.5)/31 &&  mouseXOffset < (windowHeight*1.5)/3   &&   mouseY > windowHeight/1.85 && mouseY < windowHeight/1.7){
+    if (mouseXOffset > (windowHeight*1.5)/31 &&  mouseXOffset < (windowHeight*1.5)/3   &&   mouseYOffset > windowHeight/1.85 && mouseYOffset < windowHeight/1.7){
       //Singleplayer (easy) clicked
       newGame();
       gameMode = 1;
     }
 
-    if (mouseXOffset > (windowHeight*1.5)/31 &&  mouseXOffset < (windowHeight*1.5)/3   &&   mouseY > windowHeight/1.65 && mouseY < windowHeight/1.5){
+    if (mouseXOffset > (windowHeight*1.5)/31 &&  mouseXOffset < (windowHeight*1.5)/3   &&   mouseYOffset > windowHeight/1.65 && mouseYOffset < windowHeight/1.5){
       //Singleplayer (Hard) clicked
       newGame();
       gameMode = 3;
     }
 
-    if (mouseXOffset > (windowHeight*1.5)/31 &&  mouseXOffset < (windowHeight*1.5)/3   &&   mouseY > windowHeight/1.45 && mouseY < windowHeight/1.3){
+    if (mouseXOffset > (windowHeight*1.5)/31 &&  mouseXOffset < (windowHeight*1.5)/3   &&   mouseYOffset > windowHeight/1.45 && mouseYOffset < windowHeight/1.3){
       // Multiplayer button clicked
     }
   }
@@ -204,44 +218,48 @@ function placeDie(gameState, player, pos) {
   var offset = 0;   // If this is player 2, offset board indicies by 9
   var placePos;
 
+  var newGameState = gameState + "";
+
   if (player == '2') {
     offset = 9;
   }
 
   if (board.charAt(pos + offset) == '0') {
-    currentGameState = setCharAt(currentGameState, 4 + offset + pos, gameState.charAt(1)); // Put the dice in the next free location in this column
+    newGameState = setCharAt(newGameState, 4 + offset + pos, gameState.charAt(1)); // Put the dice in the next free location in this column
     placePos = offset + pos;
   } else if (board.charAt(pos + offset + 3) == '0') {
-    currentGameState = setCharAt(currentGameState, 4 + offset + pos + 3, gameState.charAt(1));
+    newGameState = setCharAt(newGameState, 4 + offset + pos + 3, gameState.charAt(1));
     placePos = offset + pos + 3;
   } else if (board.charAt(pos + offset + 6) == '0') {
-    currentGameState = setCharAt(currentGameState, 4 + offset + pos + 6, gameState.charAt(1));
+    newGameState = setCharAt(newGameState, 4 + offset + pos + 6, gameState.charAt(1));
     placePos = offset + pos + 6;
   } else {
-    return; // No free spaces in this col, ignore the move
+    return gameState; // No free spaces in this col, ignore the move
   }
 
 
   // Delete any of this value dice from the opponent's column
-  currentGameState = fightDice(currentGameState, player, pos, gameState.charAt(1));
+  newGameState = fightDice(newGameState, player, pos, gameState.charAt(1));
 
 
   // Move was made successfully, pass the game state over to other player and get their dice roll
   if (player == '1') {
-    currentGameState = setCharAt(currentGameState, 0, '2');
+    newGameState = setCharAt(newGameState, 0, '2');
   } else {
-    currentGameState = setCharAt(currentGameState, 0, '1');
+    newGameState = setCharAt(newGameState, 0, '1');
   }
 
-  currentGameState = setCharAt(currentGameState, 3, toLetterPos(placePos));
-  currentGameState = setCharAt(currentGameState, 2, gameState.charAt(1));
-  currentGameState = setCharAt(currentGameState, 1, 1 + Math.floor(Math.random() * 6));  // Next dice roll for next player
+  newGameState = setCharAt(newGameState, 3, toLetterPos(placePos));
+  newGameState = setCharAt(newGameState, 2, gameState.charAt(1));
+  newGameState = setCharAt(newGameState, 1, 1 + Math.floor(Math.random() * 6));  // Next dice roll for next player
 
   //console.log("Place pos: " + placePos);
   //console.log(currentGameState);
 
   animationFrame = 0;
   displayGameState = displayGameState.charAt(0) + "000" + displayGameState.substring(4, 22);  // Remove the rolled dice from displaying
+
+  return newGameState;
 
 }
 
@@ -452,8 +470,12 @@ function diceImg(diceNumber) {
 
 // Fades in and out the highlight images on mouseover
 function drawColumnHighlight() {
+
+
   var mouseXOffset = mouseX - middleScreenOffset;
-  if (mouseY > windowHeight / 2 && mouseY < windowHeight * (9 / 10)) {
+  var mouseYOffset = mouseY;
+
+  if (mouseYOffset > windowHeight / 2 && mouseYOffset < windowHeight * (9 / 10)) {
     if (mouseXOffset > (windowHeight * 1.5) / 3 && mouseXOffset < (windowHeight * 1.5) / 3 + (windowHeight * 1.5) / 9) {
       highLightOpacities[0] = min(highLightOpacities[0] + 20, 128);
     }
@@ -485,7 +507,7 @@ function getOpponentMove(gameState) {
   if (Math.random() < 0.03) {
     var move = 0 + Math.floor(Math.random() * 3);
     //console.log("Player: " + gameState.charAt(0) + " Move: " + move);
-    placeDie(gameState, gameState.charAt(0), move);
+    currentGameState = placeDie(gameState, gameState.charAt(0), move);
   }
 }
 
@@ -499,22 +521,55 @@ function getAIMove(gameState, difficulty) {
     if (difficulty == 1 || difficulty == 2){ // Easiest difficulty, random move
       var move = 0 + Math.floor(Math.random() * 3);
       //console.log("Player: " + gameState.charAt(0) + " Move: " + move);
-      placeDie(gameState, gameState.charAt(0), move);
+      currentGameState = placeDie(gameState, gameState.charAt(0), move);
     }
 
-    if (difficulty == 3){ // Hardest difficulty (TODO)
+    if (difficulty == 3){ // Hardest difficulty
       var move = 0;
-      placeDie(gameState, gameState.charAt(0), move);
+      currentGameState = placeDie(gameState, gameState.charAt(0), getGreedyMove(gameState));
     }
 
   }
 }
+
+function getGreedyMove(gameState){
+  console.log("Making move");
+  var bestScore = -1000;
+  var bestMove = 0;
+  for (var i=0;i<3;i++){
+
+    var thisScore = getScore(placeDie(gameState, '2', i), '2', 0) + getScore(placeDie(gameState, '2', i), '2', 1) + getScore(placeDie(gameState, '2', i), '2', 2);  // Add the score for all cols for this move
+    thisScore -= getScore(placeDie(gameState, '2', i), '1', 0) + getScore(placeDie(gameState, '2', i), '1', 1) + getScore(placeDie(gameState, '2', i), '1', 2);  // Subtract the player's score from this evaluation
+
+    if (placeDie(gameState, '2', i) == gameState){  // If this is not a valid move, don't reward it
+      thisScore = -10000;
+    }
+
+    if (thisScore > bestScore){
+      bestScore = thisScore;
+      bestMove = i
+    }
+    console.log(i + " " + bestScore);
+  }
+
+  console.log(bestMove);
+  
+  return bestMove;
+
+}
+
 
 
 
 
 // Gets the score of a column
 function getScore(gameState, player, col) {
+
+
+  if (gameState == undefined){
+    return -10000;
+  }
+
   var tallies = [0, 0, 0, 0, 0, 0];
   var offset = 0;
   if (player == '2') {
@@ -608,6 +663,7 @@ function gameOverScreen() {
 function titleScreen() {
 
   var mouseXOffset = mouseX - middleScreenOffset;
+  var mouseYOffset = mouseY;
 
   if (appState == 0) {
 
@@ -619,25 +675,25 @@ function titleScreen() {
     textSize(windowHeight / 25);
 
     // Hover highlight stuff
-    if (mouseXOffset > (windowHeight*1.5)/31 &&  mouseXOffset < (windowHeight*1.5)/4   &&   mouseY > windowHeight/2.1 && mouseY < windowHeight/1.9){
+    if (mouseXOffset > (windowHeight*1.5)/31 &&  mouseXOffset < (windowHeight*1.5)/4   &&   mouseYOffset > windowHeight/2.1 && mouseYOffset < windowHeight/1.9){
       fill (255, 0, 0);
     }
     text("How to play", (windowHeight * 1.5) / 30, windowHeight / 2);
     fill(255);
 
-    if (mouseXOffset > (windowHeight*1.5)/31 &&  mouseXOffset < (windowHeight*1.5)/3   &&   mouseY > windowHeight/1.85 && mouseY < windowHeight/1.7){
+    if (mouseXOffset > (windowHeight*1.5)/31 &&  mouseXOffset < (windowHeight*1.5)/3   &&   mouseYOffset > windowHeight/1.85 && mouseYOffset < windowHeight/1.7){
       fill (255, 0, 0);
     }
     text("Singleplayer (Easy)", (windowHeight * 1.5) / 30, windowHeight / 1.8);
     fill(255);
 
-    if (mouseXOffset > (windowHeight*1.5)/31 &&  mouseXOffset < (windowHeight*1.5)/3   &&   mouseY > windowHeight/1.65 && mouseY < windowHeight/1.5){
+    if (mouseXOffset > (windowHeight*1.5)/31 &&  mouseXOffset < (windowHeight*1.5)/3   &&   mouseYOffset > windowHeight/1.65 && mouseYOffset < windowHeight/1.5){
       fill (255, 0, 0);
     }
     text("Singleplayer (Hard)", (windowHeight * 1.5) / 30, windowHeight / 1.6);
     fill(255)
 
-    if (mouseXOffset > (windowHeight*1.5)/31 &&  mouseXOffset < (windowHeight*1.5)/3   &&   mouseY > windowHeight/1.45 && mouseY < windowHeight/1.3){
+    if (mouseXOffset > (windowHeight*1.5)/31 &&  mouseXOffset < (windowHeight*1.5)/3   &&   mouseYOffset > windowHeight/1.45 && mouseYOffset < windowHeight/1.3){
       fill (255, 0, 0);
     }
     text("Multiplayer", (windowHeight * 1.5) / 30, windowHeight / 1.4);
@@ -674,3 +730,4 @@ function toLetterPos(pos) {
 function fromLetterPos(pos) {
   return "abcdefghijklmnopqrstuvwxyz".indexOf(pos);
 }
+
