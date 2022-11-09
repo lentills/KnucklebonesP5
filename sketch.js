@@ -20,12 +20,9 @@ var gameMode = 0;         // 0 - singleplayer easy   1 - singleplayer medium   2
 //const diceSize = 0.05556 * 1.5; // Size of die relative to window height (1/6th of 1/3rd of screen width)
 const diceSize = 0.11; // Size of die relative to window height
 
-function setup() {
-  createCanvas(windowWidth, windowHeight);
-  pixelDensity(1);
-  frameRate(240);
-  middleScreenOffset = (windowWidth - windowHeight * 1.5) / 2;
 
+
+function preload(){
   // Load in our assets
   dice_1_img = loadImage('assets/dice_1.png');
   dice_2_img = loadImage('assets/dice_2.png');
@@ -38,6 +35,14 @@ function setup() {
   highlight_img = loadImage('assets/highlight.png');
 
   myFont = loadFont('assets/JudgesSC.ttf');
+}
+
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  pixelDensity(1);
+  frameRate(60);
+  middleScreenOffset = (windowWidth - windowHeight * 1.5) / 2;
 
   appState = 0;
 
