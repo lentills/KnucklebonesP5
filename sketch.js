@@ -533,9 +533,12 @@ function getAIMove(gameState, difficulty) {
 }
 
 function getGreedyMove(gameState){
+
   console.log("Making move");
   var bestScore = -1000;
   var bestMove = 0;
+
+
   for (var i=0;i<3;i++){
 
     var thisScore = getScore(placeDie(gameState, '2', i), '2', 0) + getScore(placeDie(gameState, '2', i), '2', 1) + getScore(placeDie(gameState, '2', i), '2', 2);  // Add the score for all cols for this move
@@ -545,14 +548,22 @@ function getGreedyMove(gameState){
       thisScore = -10000;
     }
 
+    // If this is new best immediate move, set this to bestMove
     if (thisScore > bestScore){
       bestScore = thisScore;
       bestMove = i
     }
+
+    // If both these moves are equal, choose a random one to introduce a bit of unpredictability
+    if (thisScore == bestScore){
+      if (Math.random() > 0.5){
+        bestMove = i;
+      }
+
+    }
+
     console.log(i + " " + bestScore);
   }
-
-  console.log(bestMove);
   
   return bestMove;
 
