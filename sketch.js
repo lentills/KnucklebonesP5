@@ -2,6 +2,7 @@
 var appState = 0;   // 0 - Main menu    1 - Single Player    2 - Multiplayer Lobby    3 - Multiplayer    4 - Win state    5 - Lose state    6 - Tie state     7 - howToPlay screen
 
 var dice_1_img, dice_2_img, dice_3_img, dice_4_img, dice_5_img, dice_6_img;
+var tut_1_img, tut_2_img, tut_3_img;
 var gameOverFade;
 var board_img;
 var highlight_img;
@@ -33,6 +34,10 @@ function preload(){
   shadow_img = loadImage('assets/dice_shadow.png');
   board_img = loadImage('assets/board.jpg');
   highlight_img = loadImage('assets/highlight.png');
+
+  tut_1_img = loadImage('assets/tut_1.jpg');
+  tut_2_img = loadImage('assets/tut_2.jpg');
+  tut_3_img = loadImage('assets/tut_3.jpg');
 
   myFont = loadFont('assets/JudgesSC.ttf');
 
@@ -142,6 +147,11 @@ function draw() {
   // Title screen
   if (appState == 0) {
     titleScreen();
+  }
+
+  // Tutorial Screen
+  if (appState == 7){
+    tutorialScreen();
   }
 
 
@@ -642,6 +652,19 @@ function checkWin(gameState) {
 }
 
 
+
+
+
+
+
+
+
+
+//////// SCREENS //////////
+
+
+
+
 // Draw the game over screens
 function gameOverScreen() {
   if (appState == 4 || appState == 5 || appState == 6) {
@@ -670,6 +693,7 @@ function gameOverScreen() {
   }
 }
 
+
 // Draw the title screen
 function titleScreen() {
 
@@ -679,7 +703,7 @@ function titleScreen() {
   if (appState == 0) {
 
     fill(255);
-    textSize(windowHeight / 5);
+    textSize(windowHeight / 6);
     textAlign(LEFT, CENTER);
     textFont(myFont);
     text("Knucklebones", (windowHeight * 1.5) / 30, (windowHeight * 1.5) / 4);
@@ -713,6 +737,35 @@ function titleScreen() {
 
     textAlign(RIGHT, CENTER);
     text("(Not associated with the Cult of the Lamb)", (windowHeight * 1.5) * (29 / 30), windowHeight * (29 / 30));
+
+  }
+}
+
+// Draw the tutorial screen
+function tutorialScreen(){
+  if (appState == 7){
+
+    fill(255);
+    textSize(windowHeight / 10);
+    textAlign(CENTER, CENTER);
+    textFont(myFont);
+    text("Knucklebones", (windowHeight * 1.5) / 2, windowHeight / 30);
+
+    image (tut_1_img, (windowHeight * 1.5) * (1/2), windowHeight * (1/10), (windowHeight * 1.5)/3, (windowHeight * 1.5)/6);
+    image (tut_2_img, (windowHeight * 1.5) * (1/10), windowHeight * (4/10), (windowHeight * 1.5)/3, (windowHeight * 1.5)/6);
+    image (tut_3_img, (windowHeight * 1.5) * (6/10), windowHeight * (6/10), (windowHeight * 1.5)/4, (windowHeight * 1.5)/4);
+
+    textSize(windowHeight / 45);
+    textAlign(LEFT, CENTER);
+    text("Dice on your board contribute to your score", (windowHeight * 1.5) * (1/10), windowHeight / 5);
+    text("Match dice in your columns to multiply their score", (windowHeight * 1.5) * (5/11), windowHeight / 2);
+    text("Match dice on your opponent's board to destroy them", (windowHeight * 1.5) * (1/10), windowHeight * (8/10));
+
+    if (mouseY > windowHeight * (9/10)){
+      fill(255, 0, 0);
+    }
+    textSize(windowHeight / 20);
+    text("Back", (windowHeight * 1.5) * (1/20), windowHeight * (11/12));
 
   }
 }
