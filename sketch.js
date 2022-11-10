@@ -17,6 +17,10 @@ var middleScreenOffset;   // pixels to translate everything to the middle of the
 var screenScale;          // if the screen is taller than 1/1.5 then we need to scale it. This keeps track of what scale we are using for the mouse position
 var myFont;
 var gameMode = 0;         // 0 - singleplayer easy   1 - singleplayer medium   2 - singleplayer hard   3 - multiplayer
+var recievedMultiplayerGameStart = false;
+
+var conn, peer, myPeerID, opponentPeerID, idInput, idField; // peerjs stuff
+var opponentMove;         // The opponent's move if available
 
 // Consts
 //const diceSize = 0.05556 * 1.5; // Size of die relative to window height (1/6th of 1/3rd of screen width)
@@ -24,7 +28,7 @@ const diceSize = 0.11; // Size of die relative to window height
 
 
 
-function preload(){
+function preload() {
   // Load in our assets
   dice_1_img = loadImage('assets/dice_1.png');
   dice_2_img = loadImage('assets/dice_2.png');
@@ -55,6 +59,7 @@ function setup() {
 
   appState = 0;
 
+
 }
 
 function newGame() {
@@ -69,8 +74,8 @@ function newGame() {
 
   displayGameState = currentGameState;
   animationFrame = 31;  // Start by rolling a dice
-  appState = 3;
   gameOverFade = 0;
+  recievedMultiplayerGameStart = false;
 
 }
 
@@ -87,16 +92,16 @@ function draw() {
   //translate(middleScreenOffset, 0);
 
   screenScale = 1;
-  if (windowHeight*1.5 <= windowWidth){
+  if (windowHeight * 1.5 <= windowWidth) {
     middleScreenOffset = (windowWidth - windowHeight * 1.5) / 2;
     translate(middleScreenOffset, 0);
-  }else{
+  } else {
     // This is a vertical screen. Scale everything down -_-
     //translate((middleScreenOffset/(windowWidth*1.5))-middleScreenOffset, 0);
     middleScreenOffset = 0;
-    scale(windowWidth/windowHeight/1.5);
-    screenScale = windowWidth/windowHeight/1.5;
-    
+    scale(windowWidth / windowHeight / 1.5);
+    screenScale = windowWidth / windowHeight / 1.5;
+
   }
 
 
@@ -134,13 +139,26 @@ function draw() {
 
     }
 
+
+    // If we just started a multiplayer game, wait for game host to send us starting positions
+    if (!recievedMultiplayerGameStart && appState == 3){
+      getOpponentMove();
+    }
+
+    // If we are the host, make sure we send the opponent the game board (after a couple of frames to add some delay)
+    if (!recievedMultiplayerGameStart && appState == 3 && animationFrame == 10){
+      console.log("Sending inital state");
+      sendMove(swapPlayer(currentGameState));
+      recievedMultiplayerGameStart = true;
+    }
+
     // If it is the other player's turn, get their move
-    if (currentGameState.charAt(0) != myPlayer && animationFrame == -1 && gameMode == 4) {
-      getOpponentMove(currentGameState);
+    if (currentGameState.charAt(0) != myPlayer && animationFrame == -1 && (gameMode == 3 || appState == 3)) {
+      getOpponentMove();
     }
 
     // If it is the ai's turn, get it's move
-    if (currentGameState.charAt(0) != myPlayer && animationFrame == -1 && gameMode != 4) {
+    if (currentGameState.charAt(0) != myPlayer && animationFrame == -1 && !(gameMode == 3 || appState == 3)) {
       getAIMove(currentGameState, gameMode);
     }
 
@@ -158,8 +176,13 @@ function draw() {
   }
 
   // Tutorial Screen
-  if (appState == 7){
+  if (appState == 7) {
     tutorialScreen();
+  }
+
+  // Multiplayer lobby screen
+  if (appState == 2) {
+    multiplayerScreen();
   }
 
 
@@ -173,26 +196,41 @@ function draw() {
 //  Mouse has clicked! see if we are making a move or not
 function mouseClicked() {
 
-  var mouseXOffset = (mouseX/screenScale) - middleScreenOffset;
-  var mouseYOffset = mouseY/screenScale;
+  var mouseXOffset = (mouseX / screenScale) - middleScreenOffset;
+  var mouseYOffset = mouseY / screenScale;
 
   // Make a move
   if (currentGameState.charAt(0) == myPlayer && (appState == 1 || appState == 3) && animationFrame == -1) {
     if (mouseYOffset > windowHeight / 2 && mouseYOffset < windowHeight * (9 / 10)) {
+
+      var newGameState = "";
+
       if (mouseXOffset > (windowHeight * 1.5) / 3 && mouseXOffset < (windowHeight * 1.5) / 3 + (windowHeight * 1.5) / 9) {
-        currentGameState = placeDie(currentGameState, myPlayer, 0);
+        newGameState = placeDie(currentGameState, myPlayer, 0);
       }
       else if (mouseXOffset > (windowHeight * 1.5) / 3 + (windowHeight * 1.5) / 9 && mouseXOffset < (windowHeight * 1.5) / 3 + 2 * (windowHeight * 1.5) / 9) {
-        currentGameState = placeDie(currentGameState, myPlayer, 1);
+        newGameState = placeDie(currentGameState, myPlayer, 1);
       }
       else if (mouseXOffset > (windowHeight * 1.5) / 3 + 2 * (windowHeight * 1.5) / 9 && mouseXOffset < (windowHeight * 1.5) / 3 + 3 * (windowHeight * 1.5) / 9) {
-        currentGameState = placeDie(currentGameState, myPlayer, 2);
+        newGameState = placeDie(currentGameState, myPlayer, 2);
       }
+
+      // Check if this was a valid move
+      if (newGameState != currentGameState && newGameState.length > 5) {
+        currentGameState = newGameState;
+
+        // If this is multiplayer, send the opponent our move
+        if (appState == 3) {
+          sendMove(swapPlayer(newGameState));
+        }
+      }
+
+
 
     }
   }
 
-  if (appState == 7){
+  if (appState == 7) {
     appState = 0;
   }
 
@@ -203,25 +241,32 @@ function mouseClicked() {
 
   // Title screen
   if (appState == 0) {
-    if (mouseXOffset > (windowHeight*1.5)/31 &&  mouseXOffset < (windowHeight*1.5)/4   &&   mouseYOffset > windowHeight/2.1 && mouseYOffset < windowHeight/1.9){
+    if (mouseXOffset > (windowHeight * 1.5) / 31 && mouseXOffset < (windowHeight * 1.5) / 4 && mouseYOffset > windowHeight / 2.1 && mouseYOffset < windowHeight / 1.9) {
       appState = 7;
       // How to play
     }
 
-    if (mouseXOffset > (windowHeight*1.5)/31 &&  mouseXOffset < (windowHeight*1.5)/3   &&   mouseYOffset > windowHeight/1.85 && mouseYOffset < windowHeight/1.7){
+    if (mouseXOffset > (windowHeight * 1.5) / 31 && mouseXOffset < (windowHeight * 1.5) / 3 && mouseYOffset > windowHeight / 1.85 && mouseYOffset < windowHeight / 1.7) {
       //Singleplayer (easy) clicked
       newGame();
       gameMode = 1;
+      appState = 1;
     }
 
-    if (mouseXOffset > (windowHeight*1.5)/31 &&  mouseXOffset < (windowHeight*1.5)/3   &&   mouseYOffset > windowHeight/1.65 && mouseYOffset < windowHeight/1.5){
+    if (mouseXOffset > (windowHeight * 1.5) / 31 && mouseXOffset < (windowHeight * 1.5) / 3 && mouseYOffset > windowHeight / 1.65 && mouseYOffset < windowHeight / 1.5) {
       //Singleplayer (Hard) clicked
       newGame();
       gameMode = 3;
+      appState = 1;
     }
 
-    if (mouseXOffset > (windowHeight*1.5)/31 &&  mouseXOffset < (windowHeight*1.5)/3   &&   mouseYOffset > windowHeight/1.45 && mouseYOffset < windowHeight/1.3){
+    if (mouseXOffset > (windowHeight * 1.5) / 31 && mouseXOffset < (windowHeight * 1.5) / 3 && mouseYOffset > windowHeight / 1.45 && mouseYOffset < windowHeight / 1.3) {
       // Multiplayer button clicked
+      appState = 2;
+      gameMode = 3;
+      myPeerID = null;
+      opponentPeerID = null;
+      setupPeer();
     }
   }
 
@@ -318,6 +363,10 @@ function fightDice(gameState, player, pos, diceVal) {
 
 // Draws the game state on the board for 1 or 2 player's perspective
 function drawGameState(gameState, player) {
+
+  if (gameState == undefined) {
+    return;
+  }
 
   var board = gameState.substring(4, 22);
 
@@ -428,12 +477,18 @@ function diceGlide(dice, player, frame) {
   }
 
   var xEnd, yEnd;
-  if (player != currentGameState.charAt(0)) {
+  if (appState != 3) {
     xEnd = boardScreenPos(fromLetterPos(currentGameState.charAt(3)), '1')[0];
     yEnd = boardScreenPos(fromLetterPos(currentGameState.charAt(3)), '1')[1];
-  } else {
-    xEnd = boardScreenPos(fromLetterPos(currentGameState.charAt(3)), '1')[0];
-    yEnd = boardScreenPos(fromLetterPos(currentGameState.charAt(3)), '1')[1];
+  }else{
+    if (currentGameState.charAt(0) == myPlayer){
+      xEnd = boardScreenPos(fromLetterPos(currentGameState.charAt(3)), '2')[0];
+      yEnd = boardScreenPos(fromLetterPos(currentGameState.charAt(3)), '2')[1];
+    }else{
+      xEnd = boardScreenPos(fromLetterPos(currentGameState.charAt(3)), '1')[0];
+      yEnd = boardScreenPos(fromLetterPos(currentGameState.charAt(3)), '1')[1];
+    }
+    
   }
 
 
@@ -490,8 +545,8 @@ function diceImg(diceNumber) {
 function drawColumnHighlight() {
 
 
-  var mouseXOffset = (mouseX/screenScale) - middleScreenOffset;
-  var mouseYOffset = mouseY/screenScale;
+  var mouseXOffset = (mouseX / screenScale) - middleScreenOffset;
+  var mouseYOffset = mouseY / screenScale;
 
   if (mouseYOffset > windowHeight / 2 && mouseYOffset < windowHeight * (9 / 10)) {
     if (mouseXOffset > (windowHeight * 1.5) / 3 && mouseXOffset < (windowHeight * 1.5) / 3 + (windowHeight * 1.5) / 9) {
@@ -520,13 +575,15 @@ function drawColumnHighlight() {
 
 
 
-// Get other player move (TODO: currently just grabs random)
-function getOpponentMove(gameState) {
-  if (Math.random() < 0.03) {
-    var move = 0 + Math.floor(Math.random() * 3);
-    //console.log("Player: " + gameState.charAt(0) + " Move: " + move);
-    currentGameState = placeDie(gameState, gameState.charAt(0), move);
+// Get other player move
+function getOpponentMove() {
+  if (opponentMove != undefined) {
+    console.log("New opponent move: " + opponentMove);
+    currentGameState = opponentMove;
+    animationFrame = 0;
+    recievedMultiplayerGameStart = true;
   }
+  opponentMove = undefined;
 }
 
 
@@ -536,13 +593,13 @@ function getAIMove(gameState, difficulty) {
   if (Math.random() < 0.03) {
 
 
-    if (difficulty == 1 || difficulty == 2){ // Easiest difficulty, random move
+    if (difficulty == 1 || difficulty == 2) { // Easiest difficulty, random move
       var move = 0 + Math.floor(Math.random() * 3);
       //console.log("Player: " + gameState.charAt(0) + " Move: " + move);
       currentGameState = placeDie(gameState, gameState.charAt(0), move);
     }
 
-    if (difficulty == 3){ // Hardest difficulty
+    if (difficulty == 3) { // Hardest difficulty
       var move = 0;
       currentGameState = placeDie(gameState, gameState.charAt(0), getGreedyMove(gameState));
     }
@@ -550,31 +607,31 @@ function getAIMove(gameState, difficulty) {
   }
 }
 
-function getGreedyMove(gameState){
+function getGreedyMove(gameState) {
 
   console.log("Making move");
   var bestScore = -1000;
   var bestMove = 0;
 
 
-  for (var i=0;i<3;i++){
+  for (var i = 0; i < 3; i++) {
 
     var thisScore = getScore(placeDie(gameState, '2', i), '2', 0) + getScore(placeDie(gameState, '2', i), '2', 1) + getScore(placeDie(gameState, '2', i), '2', 2);  // Add the score for all cols for this move
     thisScore -= getScore(placeDie(gameState, '2', i), '1', 0) + getScore(placeDie(gameState, '2', i), '1', 1) + getScore(placeDie(gameState, '2', i), '1', 2);  // Subtract the player's score from this evaluation
 
-    if (placeDie(gameState, '2', i) == gameState){  // If this is not a valid move, don't reward it
+    if (placeDie(gameState, '2', i) == gameState) {  // If this is not a valid move, don't reward it
       thisScore = -10000;
     }
 
     // If this is new best immediate move, set this to bestMove
-    if (thisScore > bestScore){
+    if (thisScore > bestScore) {
       bestScore = thisScore;
       bestMove = i
     }
 
     // If both these moves are equal, choose a random one to introduce a bit of unpredictability
-    if (thisScore == bestScore){
-      if (Math.random() > 0.5){
+    if (thisScore == bestScore) {
+      if (Math.random() > 0.5) {
         bestMove = i;
       }
 
@@ -582,7 +639,7 @@ function getGreedyMove(gameState){
 
     console.log(i + " " + bestScore);
   }
-  
+
   return bestMove;
 
 }
@@ -595,7 +652,7 @@ function getGreedyMove(gameState){
 function getScore(gameState, player, col) {
 
 
-  if (gameState == undefined){
+  if (gameState == undefined) {
     return -10000;
   }
 
@@ -705,8 +762,8 @@ function gameOverScreen() {
 // Draw the title screen
 function titleScreen() {
 
-  var mouseXOffset = (mouseX/screenScale) - middleScreenOffset;
-  var mouseYOffset = mouseY/screenScale;
+  var mouseXOffset = (mouseX / screenScale) - middleScreenOffset;
+  var mouseYOffset = mouseY / screenScale;
 
   //circle(mouseXOffset, mouseYOffset, 20);
 
@@ -720,26 +777,26 @@ function titleScreen() {
     textSize(windowHeight / 25);
 
     // Hover highlight stuff
-    if (mouseXOffset > (windowHeight*1.5)/31 &&  mouseXOffset < (windowHeight*1.5)/4   &&   mouseYOffset > windowHeight/2.1 && mouseYOffset < windowHeight/1.9){
-      fill (255, 0, 0);
+    if (mouseXOffset > (windowHeight * 1.5) / 31 && mouseXOffset < (windowHeight * 1.5) / 4 && mouseYOffset > windowHeight / 2.1 && mouseYOffset < windowHeight / 1.9) {
+      fill(255, 0, 0);
     }
     text("How to play", (windowHeight * 1.5) / 30, windowHeight / 2);
     fill(255);
 
-    if (mouseXOffset > (windowHeight*1.5)/31 &&  mouseXOffset < (windowHeight*1.5)/3   &&   mouseYOffset > windowHeight/1.85 && mouseYOffset < windowHeight/1.7){
-      fill (255, 0, 0);
+    if (mouseXOffset > (windowHeight * 1.5) / 31 && mouseXOffset < (windowHeight * 1.5) / 3 && mouseYOffset > windowHeight / 1.85 && mouseYOffset < windowHeight / 1.7) {
+      fill(255, 0, 0);
     }
     text("Singleplayer (Easy)", (windowHeight * 1.5) / 30, windowHeight / 1.8);
     fill(255);
 
-    if (mouseXOffset > (windowHeight*1.5)/31 &&  mouseXOffset < (windowHeight*1.5)/3   &&   mouseYOffset > windowHeight/1.65 && mouseYOffset < windowHeight/1.5){
-      fill (255, 0, 0);
+    if (mouseXOffset > (windowHeight * 1.5) / 31 && mouseXOffset < (windowHeight * 1.5) / 3 && mouseYOffset > windowHeight / 1.65 && mouseYOffset < windowHeight / 1.5) {
+      fill(255, 0, 0);
     }
     text("Singleplayer (Hard)", (windowHeight * 1.5) / 30, windowHeight / 1.6);
     fill(255)
 
-    if (mouseXOffset > (windowHeight*1.5)/31 &&  mouseXOffset < (windowHeight*1.5)/3   &&   mouseYOffset > windowHeight/1.45 && mouseYOffset < windowHeight/1.3){
-      fill (255, 0, 0);
+    if (mouseXOffset > (windowHeight * 1.5) / 31 && mouseXOffset < (windowHeight * 1.5) / 3 && mouseYOffset > windowHeight / 1.45 && mouseYOffset < windowHeight / 1.3) {
+      fill(255, 0, 0);
     }
     text("Multiplayer", (windowHeight * 1.5) / 30, windowHeight / 1.4);
     textSize(windowHeight / 60);
@@ -752,8 +809,8 @@ function titleScreen() {
 }
 
 // Draw the tutorial screen
-function tutorialScreen(){
-  if (appState == 7){
+function tutorialScreen() {
+  if (appState == 7) {
 
     fill(255);
     textSize(windowHeight / 10);
@@ -761,24 +818,164 @@ function tutorialScreen(){
     textFont(myFont);
     text("Knucklebones", (windowHeight * 1.5) / 2, windowHeight / 30);
 
-    image (tut_1_img, (windowHeight * 1.5) * (1/2), windowHeight * (1/10), (windowHeight * 1.5)/3, (windowHeight * 1.5)/6);
-    image (tut_2_img, (windowHeight * 1.5) * (1/10), windowHeight * (4/10), (windowHeight * 1.5)/3, (windowHeight * 1.5)/6);
-    image (tut_3_img, (windowHeight * 1.5) * (6/10), windowHeight * (6/10), (windowHeight * 1.5)/4, (windowHeight * 1.5)/4);
+    image(tut_1_img, (windowHeight * 1.5) * (1 / 2), windowHeight * (1 / 10), (windowHeight * 1.5) / 3, (windowHeight * 1.5) / 6);
+    image(tut_2_img, (windowHeight * 1.5) * (1 / 10), windowHeight * (4 / 10), (windowHeight * 1.5) / 3, (windowHeight * 1.5) / 6);
+    image(tut_3_img, (windowHeight * 1.5) * (6 / 10), windowHeight * (6 / 10), (windowHeight * 1.5) / 4, (windowHeight * 1.5) / 4);
 
     textSize(windowHeight / 45);
     textAlign(LEFT, CENTER);
-    text("Dice on your board contribute to your score", (windowHeight * 1.5) * (1/10), windowHeight / 5);
-    text("Match dice in your columns to multiply their score", (windowHeight * 1.5) * (5/11), windowHeight / 2);
-    text("Match dice in your opponent's columns to destroy them", (windowHeight * 1.5) * (1/10), windowHeight * (8/10));
-    text("Game ends when a player fills their board", (windowHeight * 1.5) * (1/10), windowHeight * (17/20));
+    text("Dice on your board contribute to your score", (windowHeight * 1.5) * (1 / 10), windowHeight / 5);
+    text("Match dice in your columns to multiply their score", (windowHeight * 1.5) * (5 / 11), windowHeight / 2);
+    text("Match dice in your opponent's columns to destroy them", (windowHeight * 1.5) * (1 / 10), windowHeight * (8 / 10));
+    text("Game ends when a player fills their board", (windowHeight * 1.5) * (1 / 10), windowHeight * (17 / 20));
 
-    if (mouseY > windowHeight * (9/10)){
+    if (mouseY > windowHeight * (9 / 10)) {
       fill(255, 0, 0);
     }
     textSize(windowHeight / 20);
-    text("Back", (windowHeight * 1.5) * (1/20), windowHeight * (11/12));
+    text("Back", (windowHeight * 1.5) * (1 / 20), windowHeight * (11 / 12));
 
   }
+}
+
+
+// Draw the multiplayer lobby screen
+function multiplayerScreen() {
+  if (appState == 2) {
+
+    fill(255);
+    textSize(windowHeight / 10);
+    textAlign(CENTER, CENTER);
+    textFont(myFont);
+    text("Knucklebones", (windowHeight * 1.5) / 2, windowHeight / 30);
+
+
+    // Wait for request for p2p id
+    if (myPeerID == null && opponentPeerID == null) {
+      fill(255, 0, 0);
+      textSize(windowHeight / 30);
+      text("Setting up game...", (windowHeight * 1.5) / 2, windowHeight / 5);
+
+
+      // We have recieved our own id, so display it
+    } else if (opponentPeerID == null) {
+      fill(255);
+      textSize(windowHeight / 30);
+      text("My multiplayer code is: " + myPeerID, (windowHeight * 1.5) / 2, windowHeight / 5);
+      idField.position((windowHeight * 1.5) / 2 * screenScale + middleScreenOffset - 150, windowHeight * (2 / 9) * screenScale);
+      idField.size(300);
+      idField.value(myPeerID);
+      textSize(windowHeight / 50);
+      text("Share this with your opponent or enter an opponent's multiplayer code here", (windowHeight * 1.5) / 2, windowHeight * (0.28));
+
+      idInput.position((windowHeight * 1.5) / 2 * screenScale + middleScreenOffset - 150, windowHeight / 3 * screenScale);
+      idInput.size(300);
+      button.position(idInput.x + idInput.width, windowHeight / 3 * screenScale);
+      button.mousePressed(setupConnection);
+
+      // We have recieved a connection! join multiplayer
+      peer.on('connection', function (connection) {
+        conn = connection;
+        console.log('Recieved connection: ' + conn);
+        opponentPeerID = conn;
+        appState = 3;
+        idInput.hide();
+        idField.hide();
+        button.hide();
+
+        // Receive messages
+        conn.on('data', function (data) {
+          recieveMove(data);
+        });
+
+        // Send a new game board to the opponent
+        newGame();
+
+
+      });
+
+      // We have requested a connection! wait for connection to establish
+    } else {
+      fill(255, 0, 0);
+      textSize(windowHeight / 30);
+      text("Connecting...", (windowHeight * 1.5) / 2, windowHeight / 5);
+      idInput.hide();
+      idField.hide();
+      button.hide();
+    }
+
+  }
+}
+
+
+
+
+
+
+
+////////////////// NETCODE //////////////////
+
+function setupPeer() {
+  peer = new Peer();
+  peer.on('open', function (id) {
+    console.log('My peer ID is: ' + id);
+    myPeerID = id;
+    idInput = createInput();
+    idField = createInput();
+    button = createButton('Join');
+  });
+}
+
+
+function setupConnection() {
+  console.log("User entered id: " + idInput.value());
+  opponentPeerID = idInput.value();
+  conn = peer.connect(opponentPeerID);
+  recievedMultiplayerGameStart = false;
+  currentGameState = "2100000000000000000000";
+
+  conn.on('open', function () {
+    console.log("Opened connection!");
+    appState = 3;
+
+    // Receive messages
+    conn.on('data', function (data) {
+      recieveMove(data);
+    });
+
+  });
+
+}
+
+// Sends our move to our opponent (as a gamestate, not just a 0-2 move id)
+function sendMove(gameState) {
+  if (conn != undefined) {
+    console.log("Sending move: " + gameState);
+    conn.send(gameState);
+  }
+}
+
+function recieveMove(gameState) {
+  console.log('Received: ' + gameState);
+  opponentMove = gameState;
+}
+
+// Swaps the player of the current move
+// Used to send a flipped game state to opponent so that both players act as if they are player 1, saves a lot of trouble
+function swapPlayer(gameState) {
+  var newGameState = "";
+
+  if (gameState.charAt(0) == '1') {
+    newGameState = '2';
+  } else {
+    newGameState = '1';
+  }
+
+  newGameState += gameState.substring(1, 4);
+  newGameState += gameState.substring(13, 22);
+  newGameState += gameState.substring(4, 13);
+
+  return newGameState;
 }
 
 
@@ -805,7 +1002,7 @@ function fromLetterPos(pos) {
   return "abcdefghijklmnopqrstuvwxyz".indexOf(pos);
 }
 
-function touchStarted(){
+function touchStarted() {
   mouseClicked();
 }
 
