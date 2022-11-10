@@ -44,6 +44,8 @@ function preload() {
   tut_2_img = loadImage('assets/tut_2.jpg');
   tut_3_img = loadImage('assets/tut_3.jpg');
 
+  title_img = loadImage('assets/title.png');
+
   myFont = loadFont('assets/JudgesSC.ttf');
 
 }
@@ -289,20 +291,29 @@ function mouseClicked() {
     }
 
     if (mouseXOffset > (windowHeight * 1.5) / 31 && mouseXOffset < (windowHeight * 1.5) / 3 && mouseYOffset > windowHeight / 1.65 && mouseYOffset < windowHeight / 1.5) {
+      //Singleplayer (Medium) clicked
+      newGameSP();
+      gameMode = 2;
+      appState = 1;
+    }
+
+    if (mouseXOffset > (windowHeight * 1.5) / 31 && mouseXOffset < (windowHeight * 1.5) / 3 && mouseYOffset > windowHeight / 1.45 && mouseYOffset < windowHeight / 1.3) {
       //Singleplayer (Hard) clicked
       newGameSP();
       gameMode = 3;
       appState = 1;
     }
 
-    if (mouseXOffset > (windowHeight * 1.5) / 31 && mouseXOffset < (windowHeight * 1.5) / 3 && mouseYOffset > windowHeight / 1.45 && mouseYOffset < windowHeight / 1.3) {
-      // Multiplayer button clicked
-      appState = 2;
-      gameMode = 4;
-      myPeerID = null;
-      opponentPeerID = null;
-      setupPeer();
+    if (mouseXOffset > (windowHeight * 1.5) / 31 && mouseXOffset < (windowHeight * 1.5) / 3 && mouseYOffset > windowHeight / 1.25 && mouseYOffset < windowHeight / 1.1) {
+            // Multiplayer button clicked
+            appState = 2;
+            gameMode = 4;
+            myPeerID = null;
+            opponentPeerID = null;
+            setupPeer();
     }
+
+
   }
 
 }
@@ -643,20 +654,26 @@ function getAIMove(gameState, difficulty) {
   if (Math.random() < 0.03) {
 
 
-    if (difficulty == 1 || difficulty == 2) { // Easiest difficulty, random move
+    if (difficulty == 1) { // Easiest difficulty, random move
       var move = 0 + Math.floor(Math.random() * 3);
       //console.log("Player: " + gameState.charAt(0) + " Move: " + move);
       currentGameState = placeDie(gameState, gameState.charAt(0), move);
     }
 
-    if (difficulty == 3) { // Hardest difficulty
+    if (difficulty == 2) { // Medium difficulty
       var move = 0;
       currentGameState = placeDie(gameState, gameState.charAt(0), getGreedyMove(gameState));
+    }
+
+    if (difficulty == 3) { // Hardest difficulty
+      var move = 0;
+      currentGameState = placeDie(gameState, gameState.charAt(0), getHardMove(gameState));
     }
 
   }
 }
 
+// Return a move for the gamestate with greedy algorithm
 function getGreedyMove(gameState) {
 
   console.log("Making move");
@@ -692,6 +709,11 @@ function getGreedyMove(gameState) {
 
   return bestMove;
 
+}
+
+// Return a move given the gamestate for the hardest difficulty (TODO)
+function getHardMove(gameState){
+  return Math.floor(Math.random() * 3);
 }
 
 
@@ -827,33 +849,56 @@ function titleScreen() {
     textSize(windowHeight / 25);
 
     // Hover highlight stuff
-    if (mouseXOffset > (windowHeight * 1.5) / 31 && mouseXOffset < (windowHeight * 1.5) / 4 && mouseYOffset > windowHeight / 2.1 && mouseYOffset < windowHeight / 1.9) {
+    if (mouseXOffset > (windowHeight * 1.5) / 31 && mouseXOffset < (windowHeight * 1.5) / 4 && mouseYOffset > windowHeight / 2.2 && mouseYOffset < windowHeight / 2.0) {
       fill(255, 0, 0);
     }
-    text("How to play", (windowHeight * 1.5) / 30, windowHeight / 2);
+    text("How to play", (windowHeight * 1.5) / 30, windowHeight / 2.1);
     fill(255);
 
     if (mouseXOffset > (windowHeight * 1.5) / 31 && mouseXOffset < (windowHeight * 1.5) / 3 && mouseYOffset > windowHeight / 1.85 && mouseYOffset < windowHeight / 1.7) {
       fill(255, 0, 0);
     }
-    text("Singleplayer (Easy)", (windowHeight * 1.5) / 30, windowHeight / 1.8);
+    text("Tani (Easy)", (windowHeight * 1.5) / 30, windowHeight / 1.8);
     fill(255);
+    textSize(windowHeight / 50);
+    textAlign(LEFT, TOP);
+    text("An Artificial Intelligence, without the Intelligence part", (windowHeight * 1.5) / 5, windowHeight / 1.8);
+    textAlign(LEFT, CENTER);
+    textSize(windowHeight / 25);
 
     if (mouseXOffset > (windowHeight * 1.5) / 31 && mouseXOffset < (windowHeight * 1.5) / 3 && mouseYOffset > windowHeight / 1.65 && mouseYOffset < windowHeight / 1.5) {
       fill(255, 0, 0);
     }
-    text("Singleplayer (Hard)", (windowHeight * 1.5) / 30, windowHeight / 1.6);
-    fill(255)
+    text("Ragashar (Medium)", (windowHeight * 1.5) / 30, windowHeight / 1.6);
+    fill(255);
+    textSize(windowHeight / 50);
+    textAlign(LEFT, TOP);
+    text("A greedy, opportunistic AI. Not fun at parties", (windowHeight * 1.5) / 3.3, windowHeight / 1.6);
+    textAlign(LEFT, CENTER);
+    textSize(windowHeight / 25);
 
     if (mouseXOffset > (windowHeight * 1.5) / 31 && mouseXOffset < (windowHeight * 1.5) / 3 && mouseYOffset > windowHeight / 1.45 && mouseYOffset < windowHeight / 1.3) {
       fill(255, 0, 0);
     }
-    text("Multiplayer", (windowHeight * 1.5) / 30, windowHeight / 1.4);
+    text("Fena (HARD)", (windowHeight * 1.5) / 30, windowHeight / 1.4);
+    fill(255);
+    textSize(windowHeight / 50);
+    textAlign(LEFT, TOP);
+    text("Has already beaten you 327 times in their head (WIP)", (windowHeight * 1.5) / 4.3, windowHeight / 1.4);
+    textAlign(LEFT, CENTER);
+    textSize(windowHeight / 25);
+
+    if (mouseXOffset > (windowHeight * 1.5) / 31 && mouseXOffset < (windowHeight * 1.5) / 3 && mouseYOffset > windowHeight / 1.25 && mouseYOffset < windowHeight / 1.1) {
+      fill(255, 0, 0);
+    }
+    text("Multiplayer", (windowHeight * 1.5) / 30, windowHeight / 1.2);
     textSize(windowHeight / 60);
     fill(255);
 
     textAlign(RIGHT, CENTER);
     text("(Not associated with the Cult of the Lamb)", (windowHeight * 1.5) * (29 / 30), windowHeight * (29 / 30));
+
+    image (title_img, (windowHeight * 1.5)*(18/29), windowHeight/2, (windowHeight * 1.5)*(9/24), (windowHeight * 1.5)/4);
 
   }
 }
