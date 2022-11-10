@@ -786,7 +786,7 @@ function tutorialScreen(){
 
 
 
-
+// Utility funcs
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
@@ -803,5 +803,9 @@ function toLetterPos(pos) {
 
 function fromLetterPos(pos) {
   return "abcdefghijklmnopqrstuvwxyz".indexOf(pos);
+}
+
+function touchStarted(){
+  mouseClicked();
 }
 
