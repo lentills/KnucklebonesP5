@@ -267,11 +267,14 @@ function mouseClicked() {
 
   // If we are in a game over state, click to start a new game
   if (appState == 4 || appState == 5 || appState == 6) {
-    if (gameMode == 4){
-      newGame();
-      appState = 3;
-    }else{
-      newGameSP();
+
+    if (gameOverFade > 200){  // Need to wait for the other player to recieve the game over packet before we start a new game, or else it can create two concurrent games
+      if (gameMode == 4){
+        newGame();
+        appState = 3;
+      }else{
+        newGameSP();
+      }
     }
     
   }
