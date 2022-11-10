@@ -14,6 +14,7 @@ var highLightOpacities = [0, 0, 0];   // Lets us fade in and out the opacity of 
 var animationFrame;      // 1-30 - move dice, 60-120 roll dice
 var diceRollVal = 1;      // What value is currently being shown on the die that is being rolled
 var middleScreenOffset;   // pixels to translate everything to the middle of the screen
+var screenScale;          // if the screen is taller than 1/1.5 then we need to scale it. This keeps track of what scale we are using for the mouse position
 var myFont;
 var gameMode = 0;         // 0 - singleplayer easy   1 - singleplayer medium   2 - singleplayer hard   3 - multiplayer
 
@@ -50,6 +51,7 @@ function setup() {
   pixelDensity(1);
   frameRate(60);
   middleScreenOffset = (windowWidth - windowHeight * 1.5) / 2;
+  screenScale = 1.0;
 
   appState = 0;
 
@@ -82,12 +84,18 @@ function draw() {
 
 
   // Translate everything to the middle of the screen
-  translate(middleScreenOffset, 0);
+  //translate(middleScreenOffset, 0);
 
-  if (windowHeight*1.5 > windowWidth){
+  screenScale = 1;
+  if (windowHeight*1.5 <= windowWidth){
+    middleScreenOffset = (windowWidth - windowHeight * 1.5) / 2;
+    translate(middleScreenOffset, 0);
+  }else{
     // This is a vertical screen. Scale everything down -_-
-    translate((middleScreenOffset/(windowWidth*1.5))-middleScreenOffset, 0);
+    //translate((middleScreenOffset/(windowWidth*1.5))-middleScreenOffset, 0);
+    middleScreenOffset = 0;
     scale(windowWidth/windowHeight/1.5);
+    screenScale = windowWidth/windowHeight/1.5;
     
   }
 
@@ -165,8 +173,8 @@ function draw() {
 //  Mouse has clicked! see if we are making a move or not
 function mouseClicked() {
 
-  var mouseXOffset = mouseX - middleScreenOffset;
-  var mouseYOffset = mouseY;
+  var mouseXOffset = (mouseX/screenScale) - middleScreenOffset;
+  var mouseYOffset = mouseY/screenScale;
 
   // Make a move
   if (currentGameState.charAt(0) == myPlayer && (appState == 1 || appState == 3) && animationFrame == -1) {
@@ -482,8 +490,8 @@ function diceImg(diceNumber) {
 function drawColumnHighlight() {
 
 
-  var mouseXOffset = mouseX - middleScreenOffset;
-  var mouseYOffset = mouseY;
+  var mouseXOffset = (mouseX/screenScale) - middleScreenOffset;
+  var mouseYOffset = mouseY/screenScale;
 
   if (mouseYOffset > windowHeight / 2 && mouseYOffset < windowHeight * (9 / 10)) {
     if (mouseXOffset > (windowHeight * 1.5) / 3 && mouseXOffset < (windowHeight * 1.5) / 3 + (windowHeight * 1.5) / 9) {
@@ -697,8 +705,10 @@ function gameOverScreen() {
 // Draw the title screen
 function titleScreen() {
 
-  var mouseXOffset = mouseX - middleScreenOffset;
-  var mouseYOffset = mouseY;
+  var mouseXOffset = (mouseX/screenScale) - middleScreenOffset;
+  var mouseYOffset = mouseY/screenScale;
+
+  //circle(mouseXOffset, mouseYOffset, 20);
 
   if (appState == 0) {
 
@@ -759,7 +769,8 @@ function tutorialScreen(){
     textAlign(LEFT, CENTER);
     text("Dice on your board contribute to your score", (windowHeight * 1.5) * (1/10), windowHeight / 5);
     text("Match dice in your columns to multiply their score", (windowHeight * 1.5) * (5/11), windowHeight / 2);
-    text("Match dice on your opponent's board to destroy them", (windowHeight * 1.5) * (1/10), windowHeight * (8/10));
+    text("Match dice in your opponent's columns to destroy them", (windowHeight * 1.5) * (1/10), windowHeight * (8/10));
+    text("Game ends when a player fills their board", (windowHeight * 1.5) * (1/10), windowHeight * (17/20));
 
     if (mouseY > windowHeight * (9/10)){
       fill(255, 0, 0);
@@ -779,7 +790,6 @@ function tutorialScreen(){
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
-  middleScreenOffset = (windowWidth - windowHeight * 1.5) / 2;
 }
 
 function setCharAt(str, index, chr) {
