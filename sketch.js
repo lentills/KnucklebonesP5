@@ -16,8 +16,8 @@ var diceRollVal = 1;      // What value is currently being shown on the die that
 var middleScreenOffset;   // pixels to translate everything to the middle of the screen
 var screenScale;          // if the screen is taller than 1/1.5 then we need to scale it. This keeps track of what scale we are using for the mouse position
 var myFont;
-var gameMode = 0;         // 0 - singleplayer easy   1 - singleplayer medium   2 - singleplayer hard   3 - multiplayer
-var recievedMultiplayerGameStart = false;
+var gameMode = 0;         // 1 - singleplayer easy   2 - singleplayer medium   3 - singleplayer hard   4 - multiplayer
+var waitingForInitialBoard; // When a multiplayer match is initialised, wait for the host to send us the initial board.
 
 var conn, peer, myPeerID, opponentPeerID, idInput, idField; // peerjs stuff
 var opponentMove;         // The opponent's move if available
@@ -53,15 +53,33 @@ function setup() {
 
   createCanvas(windowWidth, windowHeight);
   pixelDensity(1);
-  frameRate(60);
+  frameRate(240);
   middleScreenOffset = (windowWidth - windowHeight * 1.5) / 2;
   screenScale = 1.0;
 
   appState = 0;
 
+}
+
+// Initialise a new singleplayer game
+function newGameSP() {
+
+  if (Math.random() > 0.5) {
+    currentGameState = "1100000000000000000000";
+  } else {
+    currentGameState = "2100000000000000000000";
+  }
+
+  currentGameState = setCharAt(currentGameState, 1, (1 + Math.floor(Math.random() * 6)));
+
+  displayGameState = currentGameState;
+  animationFrame = 31;  // Start by rolling a dice
+  gameOverFade = 0;
+  appState = 1;
 
 }
 
+// Initialise a new multiplayer game
 function newGame() {
 
   if (Math.random() > 0.5) {
@@ -75,7 +93,9 @@ function newGame() {
   displayGameState = currentGameState;
   animationFrame = 31;  // Start by rolling a dice
   gameOverFade = 0;
-  recievedMultiplayerGameStart = false;
+  gameMode = 4; // Multiplayer, so that when we request new game we remember to call this function and not the SP one
+
+  waitingForInitialBoard = true;  // Even if we're the host make sure we keep track of this
 
 }
 
@@ -135,30 +155,33 @@ function draw() {
         } else if (winState != '0') {
           appState = 5;
         }
+
+      }
+
+      if (animationFrame == 100){
+        if (appState == 3 && waitingForInitialBoard){
+          console.log("Sending intial board");
+          sendMove(swapPlayer(currentGameState));
+          waitingForInitialBoard = false;
+        }
       }
 
     }
 
 
     // If we just started a multiplayer game, wait for game host to send us starting positions
-    if (!recievedMultiplayerGameStart && appState == 3){
+    if (waitingForInitialBoard && appState == 3){
+      console.log("Waiting for starting board...");
       getOpponentMove();
     }
 
-    // If we are the host, make sure we send the opponent the game board (after a couple of frames to add some delay)
-    if (!recievedMultiplayerGameStart && appState == 3 && animationFrame == 10){
-      console.log("Sending inital state");
-      sendMove(swapPlayer(currentGameState));
-      recievedMultiplayerGameStart = true;
-    }
-
     // If it is the other player's turn, get their move
-    if (currentGameState.charAt(0) != myPlayer && animationFrame == -1 && (gameMode == 3 || appState == 3)) {
+    if (currentGameState.charAt(0) != myPlayer && animationFrame == -1 && (gameMode == 4 || appState == 3)) {
       getOpponentMove();
     }
 
     // If it is the ai's turn, get it's move
-    if (currentGameState.charAt(0) != myPlayer && animationFrame == -1 && !(gameMode == 3 || appState == 3)) {
+    if (currentGameState.charAt(0) != myPlayer && animationFrame == -1 && !(gameMode == 4 || appState == 3)) {
       getAIMove(currentGameState, gameMode);
     }
 
@@ -168,6 +191,12 @@ function draw() {
   // Game over screens
   if (appState == 4 || appState == 5 || appState == 6) {
     gameOverScreen();
+    waitingForInitialBoard = true;
+    if (gameMode == 4){
+      console.log("Waiting for starting board for new game...");
+      getOpponentMove();
+    }
+
   }
 
   // Title screen
@@ -236,7 +265,13 @@ function mouseClicked() {
 
   // If we are in a game over state, click to start a new game
   if (appState == 4 || appState == 5 || appState == 6) {
-    newGame();
+    if (gameMode == 4){
+      newGame();
+      appState = 3;
+    }else{
+      newGameSP();
+    }
+    
   }
 
   // Title screen
@@ -248,14 +283,14 @@ function mouseClicked() {
 
     if (mouseXOffset > (windowHeight * 1.5) / 31 && mouseXOffset < (windowHeight * 1.5) / 3 && mouseYOffset > windowHeight / 1.85 && mouseYOffset < windowHeight / 1.7) {
       //Singleplayer (easy) clicked
-      newGame();
+      newGameSP();
       gameMode = 1;
       appState = 1;
     }
 
     if (mouseXOffset > (windowHeight * 1.5) / 31 && mouseXOffset < (windowHeight * 1.5) / 3 && mouseYOffset > windowHeight / 1.65 && mouseYOffset < windowHeight / 1.5) {
       //Singleplayer (Hard) clicked
-      newGame();
+      newGameSP();
       gameMode = 3;
       appState = 1;
     }
@@ -263,7 +298,7 @@ function mouseClicked() {
     if (mouseXOffset > (windowHeight * 1.5) / 31 && mouseXOffset < (windowHeight * 1.5) / 3 && mouseYOffset > windowHeight / 1.45 && mouseYOffset < windowHeight / 1.3) {
       // Multiplayer button clicked
       appState = 2;
-      gameMode = 3;
+      gameMode = 4;
       myPeerID = null;
       opponentPeerID = null;
       setupPeer();
@@ -496,6 +531,7 @@ function diceGlide(dice, player, frame) {
   var y = yEnd * distance + yInit * (1.0 - distance);
 
   image(diceImg(dice), x, y, (windowHeight * diceSize) * (1.0 + distance * 0.3), (windowHeight * diceSize) * (1.0 + distance * 0.3));
+  
 
 }
 
@@ -529,7 +565,7 @@ function rollDie(player, frame) {
 
 // Return the image variable of dice 'diceNumber'
 function diceImg(diceNumber) {
-  if (diceNumber == 1) { return dice_1_img; }
+  if (diceNumber == 1 || diceNumber == 0) { return dice_1_img; }
   if (diceNumber == 2) { return dice_2_img; }
   if (diceNumber == 3) { return dice_3_img; }
   if (diceNumber == 4) { return dice_4_img; }
@@ -577,13 +613,27 @@ function drawColumnHighlight() {
 
 // Get other player move
 function getOpponentMove() {
-  if (opponentMove != undefined) {
-    console.log("New opponent move: " + opponentMove);
+  if (opponentMove != undefined && opponentMove != "") {
+    if (waitingForInitialBoard){
+      console.log("Recieved initial board: " + opponentMove);
+      displayGameState = currentGameState;
+      animationFrame = 31;  // Start by rolling a dice
+      gameOverFade = 0;
+      appState = 3;
+    }else{
+      console.log("New opponent move: " + opponentMove);
+    }
+    
     currentGameState = opponentMove;
     animationFrame = 0;
-    recievedMultiplayerGameStart = true;
+    waitingForInitialBoard = false;
+
+    if (displayGameState != undefined){
+      displayGameState = displayGameState.charAt(0) + "000" + displayGameState.substring(4, 22);  // Remove the rolled dice from displaying
+    }
+    
   }
-  opponentMove = undefined;
+  opponentMove = "";
 }
 
 
@@ -891,7 +941,6 @@ function multiplayerScreen() {
         // Send a new game board to the opponent
         newGame();
 
-
       });
 
       // We have requested a connection! wait for connection to establish
@@ -931,11 +980,11 @@ function setupConnection() {
   console.log("User entered id: " + idInput.value());
   opponentPeerID = idInput.value();
   conn = peer.connect(opponentPeerID);
-  recievedMultiplayerGameStart = false;
   currentGameState = "2100000000000000000000";
 
   conn.on('open', function () {
     console.log("Opened connection!");
+    waitingForInitialBoard = true;
     appState = 3;
 
     // Receive messages
