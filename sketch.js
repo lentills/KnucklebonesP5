@@ -55,7 +55,7 @@ function setup() {
 
   createCanvas(windowWidth, windowHeight);
   pixelDensity(1);
-  frameRate(240);
+  frameRate(60);
   middleScreenOffset = (windowWidth - windowHeight * 1.5) / 2;
   screenScale = 1.0;
 
@@ -160,7 +160,7 @@ function draw() {
 
       }
 
-      if (animationFrame == 100){
+      if (animationFrame == 119 || animationFrame == 100){
         if (appState == 3 && waitingForInitialBoard){
           console.log("Sending intial board");
           sendMove(swapPlayer(currentGameState));
