@@ -415,25 +415,23 @@ function drawGameState(gameState, player) {
 
   // Draw the text at the top of each col
   fill(255);
-  textSize(windowHeight / 30);
   textAlign(CENTER, CENTER);
   textFont(myFont);
+  var halfWinH = windowHeight/2; //half of windows height. Might be usefull soon.
   if (myPlayer == '1') {
-    text(getScore(gameState, '1', 0), (windowHeight * 1.5) / 3 + ((windowHeight * 1.5) / 18) + 0 * ((windowHeight * 1.5) / 9), windowHeight * (11 / 20));
-    text(getScore(gameState, '1', 1), (windowHeight * 1.5) / 3 + ((windowHeight * 1.5) / 18) + 1 * ((windowHeight * 1.5) / 9), windowHeight * (11 / 20));
-    text(getScore(gameState, '1', 2), (windowHeight * 1.5) / 3 + ((windowHeight * 1.5) / 18) + 2 * ((windowHeight * 1.5) / 9), windowHeight * (11 / 20));
-
-    text(getScore(gameState, '2', 0), (windowHeight * 1.5) / 3 + ((windowHeight * 1.5) / 18) + 0 * ((windowHeight * 1.5) / 9), windowHeight * (9 / 20));
-    text(getScore(gameState, '2', 1), (windowHeight * 1.5) / 3 + ((windowHeight * 1.5) / 18) + 1 * ((windowHeight * 1.5) / 9), windowHeight * (9 / 20));
-    text(getScore(gameState, '2', 2), (windowHeight * 1.5) / 3 + ((windowHeight * 1.5) / 18) + 2 * ((windowHeight * 1.5) / 9), windowHeight * (9 / 20));
-
-    textSize(windowHeight / 15);
-    text(getScore(gameState, '1', 0) + getScore(gameState, '1', 1) + getScore(gameState, '1', 2), (windowHeight * 1.5) / 6, windowHeight * (2 / 3));
-    text(getScore(gameState, '2', 0) + getScore(gameState, '2', 1) + getScore(gameState, '2', 2), (windowHeight * 1.5) * (5 / 6), windowHeight * (1 / 3));
-  } else {
-
+    for (let pn of [1,2]) { // pn is player number
+      var tempSum = 0;
+      var tempScore = 0;
+      textSize(windowHeight / 30);
+      for (let colN of [0,1,2]) {
+        tempScore = getScore(gameState, pn.toString(), colN);
+        tempSum += tempScore;
+        text(tempScore, halfWinH + (halfWinH / 6) + colN * (halfWinH / 3), halfWinH * (1.3 - pn/5));
+      }
+      textSize(windowHeight / 15);
+      text(tempSum, windowHeight * (pn - (3 / 4)), windowHeight * ( 1 - (pn / 3)));
+    }
   }
-
 }
 
 
