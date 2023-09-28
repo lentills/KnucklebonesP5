@@ -378,31 +378,17 @@ function placeDie(gameState, player, pos) {
 
 // Obliterates opponent's dice and shuffles the dice down
 function fightDice(gameState, player, pos, diceVal) {
-
+  var tempPosOffset = 4 + pos;
   if (player == '1') {
-    if (gameState.charAt(4 + 9 + pos) == diceVal) {
-      gameState = setCharAt(gameState, 4 + 9 + pos, '0');
-    }
-    if (gameState.charAt(4 + 9 + pos + 3) == diceVal) {
-      gameState = setCharAt(gameState, 4 + 9 + pos + 3, '0');
-    }
-    if (gameState.charAt(4 + 9 + pos + 6) == diceVal) {
-      gameState = setCharAt(gameState, 4 + 9 + pos + 6, '0');
-    }
-  } else {
-    if (gameState.charAt(4 + pos) == diceVal) {
-      gameState = setCharAt(gameState, 4 + pos, '0');
-    }
-    if (gameState.charAt(4 + pos + 3) == diceVal) {
-      gameState = setCharAt(gameState, 4 + pos + 3, '0');
-    }
-    if (gameState.charAt(4 + pos + 6) == diceVal) {
-      gameState = setCharAt(gameState, 4 + pos + 6, '0');
-    }
+    tempPosOffset += 9;
   }
 
+  for (var i = 0; i < 3; i++) {
+    if (gameState.charAt(tempPosOffset + i * 3) == diceVal) {
+      gameState = setCharAt(gameState, tempPosOffset + i * 3, '0');
+    }
+  }
   return gameState;
-
 }
 
 
