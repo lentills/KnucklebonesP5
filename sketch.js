@@ -322,33 +322,25 @@ function mouseClicked() {
 }
 
 
-
 // If there is a free row in the selected column, place the die there and go on to the next move
 function placeDie(gameState, player, pos) {
 
   var board = gameState.substring(4, 22);
   var offset = 0;   // If this is player 2, offset board indicies by 9
   var placePos;
-
   var newGameState = gameState + "";
 
   if (player == '2') {
     offset = 9;
   }
 
-  if (board.charAt(pos + offset) == '0') {
-    newGameState = setCharAt(newGameState, 4 + offset + pos, gameState.charAt(1)); // Put the dice in the next free location in this column
-    placePos = offset + pos;
-  } else if (board.charAt(pos + offset + 3) == '0') {
-    newGameState = setCharAt(newGameState, 4 + offset + pos + 3, gameState.charAt(1));
-    placePos = offset + pos + 3;
-  } else if (board.charAt(pos + offset + 6) == '0') {
-    newGameState = setCharAt(newGameState, 4 + offset + pos + 6, gameState.charAt(1));
-    placePos = offset + pos + 6;
-  } else {
+  // Put the dice in the next free location in this column
+  var firstFree = ([0,3,6].filter(i => board.charAt(pos + offset + i) == '0'));
+  if (firstFree.length == 0) {
     return gameState; // No free spaces in this col, ignore the move
   }
-
+  newGameState = setCharAt(newGameState, 4 + offset + pos + firstFree[0], gameState.charAt(1));
+  placePos = offset + pos + firstFree[0];
 
   // Delete any of this value dice from the opponent's column
   newGameState = fightDice(newGameState, player, pos, gameState.charAt(1));
@@ -383,17 +375,13 @@ function fightDice(gameState, player, pos, diceVal) {
     tempPosOffset += 9;
   }
 
-  for (var i = 0; i < 3; i++) {
-    if (gameState.charAt(tempPosOffset + i * 3) == diceVal) {
-      gameState = setCharAt(gameState, tempPosOffset + i * 3, '0');
+  for (var i = 0; i < 9; i+=3) {
+    if (gameState.charAt(tempPosOffset + i) == diceVal) {
+      gameState = setCharAt(gameState, tempPosOffset + i, '0');
     }
   }
   return gameState;
 }
-
-
-
-
 
 
 // Draws the game state on the board for 1 or 2 player's perspective
