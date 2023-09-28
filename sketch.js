@@ -497,28 +497,16 @@ function diceGlide(dice, player, frame) {
     yInit = windowHeight * (1 / 4) - windowHeight * diceSize;
   }
 
-  var xEnd, yEnd;
-  if (appState != 3) {
-    xEnd = boardScreenPos(fromLetterPos(currentGameState.charAt(3)), '1')[0];
-    yEnd = boardScreenPos(fromLetterPos(currentGameState.charAt(3)), '1')[1];
-  }else{
-    if (currentGameState.charAt(0) == myPlayer){
-      xEnd = boardScreenPos(fromLetterPos(currentGameState.charAt(3)), '2')[0];
-      yEnd = boardScreenPos(fromLetterPos(currentGameState.charAt(3)), '2')[1];
-    }else{
-      xEnd = boardScreenPos(fromLetterPos(currentGameState.charAt(3)), '1')[0];
-      yEnd = boardScreenPos(fromLetterPos(currentGameState.charAt(3)), '1')[1];
-    }
-    
-  }
-
+  var tempPlayer = '1';
+  if ((appState == 3) && (currentGameState.charAt(0) == myPlayer)) {
+    tempPlayer = '2';
+  }     
+  var [xEnd,yEnd] = boardScreenPos(fromLetterPos(currentGameState.charAt(3)), tempPlayer);
 
   var x = xEnd * distance + xInit * (1.0 - distance);
   var y = yEnd * distance + yInit * (1.0 - distance);
 
   image(diceImg(dice), x, y, (windowHeight * diceSize) * (1.0 + distance * 0.3), (windowHeight * diceSize) * (1.0 + distance * 0.3));
-  
-
 }
 
 // Animates the rolling of a die
