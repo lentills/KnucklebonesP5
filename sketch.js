@@ -322,33 +322,25 @@ function mouseClicked() {
 }
 
 
-
 // If there is a free row in the selected column, place the die there and go on to the next move
 function placeDie(gameState, player, pos) {
 
   var board = gameState.substring(4, 22);
   var offset = 0;   // If this is player 2, offset board indicies by 9
   var placePos;
-
   var newGameState = gameState + "";
 
   if (player == '2') {
     offset = 9;
   }
 
-  if (board.charAt(pos + offset) == '0') {
-    newGameState = setCharAt(newGameState, 4 + offset + pos, gameState.charAt(1)); // Put the dice in the next free location in this column
-    placePos = offset + pos;
-  } else if (board.charAt(pos + offset + 3) == '0') {
-    newGameState = setCharAt(newGameState, 4 + offset + pos + 3, gameState.charAt(1));
-    placePos = offset + pos + 3;
-  } else if (board.charAt(pos + offset + 6) == '0') {
-    newGameState = setCharAt(newGameState, 4 + offset + pos + 6, gameState.charAt(1));
-    placePos = offset + pos + 6;
-  } else {
+  // Put the dice in the next free location in this column
+  var firstFree = ([0,3,6].filter(i => board.charAt(pos + offset + i) == '0'));
+  if (firstFree.length == 0) {
     return gameState; // No free spaces in this col, ignore the move
   }
-
+  newGameState = setCharAt(newGameState, 4 + offset + pos + firstFree[0], gameState.charAt(1));
+  placePos = offset + pos + firstFree[0];
 
   // Delete any of this value dice from the opponent's column
   newGameState = fightDice(newGameState, player, pos, gameState.charAt(1));
@@ -378,36 +370,18 @@ function placeDie(gameState, player, pos) {
 
 // Obliterates opponent's dice and shuffles the dice down
 function fightDice(gameState, player, pos, diceVal) {
-
+  var tempPosOffset = 4 + pos;
   if (player == '1') {
-    if (gameState.charAt(4 + 9 + pos) == diceVal) {
-      gameState = setCharAt(gameState, 4 + 9 + pos, '0');
-    }
-    if (gameState.charAt(4 + 9 + pos + 3) == diceVal) {
-      gameState = setCharAt(gameState, 4 + 9 + pos + 3, '0');
-    }
-    if (gameState.charAt(4 + 9 + pos + 6) == diceVal) {
-      gameState = setCharAt(gameState, 4 + 9 + pos + 6, '0');
-    }
-  } else {
-    if (gameState.charAt(4 + pos) == diceVal) {
-      gameState = setCharAt(gameState, 4 + pos, '0');
-    }
-    if (gameState.charAt(4 + pos + 3) == diceVal) {
-      gameState = setCharAt(gameState, 4 + pos + 3, '0');
-    }
-    if (gameState.charAt(4 + pos + 6) == diceVal) {
-      gameState = setCharAt(gameState, 4 + pos + 6, '0');
-    }
+    tempPosOffset += 9;
   }
 
+  for (var i = 0; i < 9; i+=3) {
+    if (gameState.charAt(tempPosOffset + i) == diceVal) {
+      gameState = setCharAt(gameState, tempPosOffset + i, '0');
+    }
+  }
   return gameState;
-
 }
-
-
-
-
 
 
 // Draws the game state on the board for 1 or 2 player's perspective
@@ -441,25 +415,23 @@ function drawGameState(gameState, player) {
 
   // Draw the text at the top of each col
   fill(255);
-  textSize(windowHeight / 30);
   textAlign(CENTER, CENTER);
   textFont(myFont);
+  var halfWinH = windowHeight/2; //half of windows height. Might be usefull soon.
   if (myPlayer == '1') {
-    text(getScore(gameState, '1', 0), (windowHeight * 1.5) / 3 + ((windowHeight * 1.5) / 18) + 0 * ((windowHeight * 1.5) / 9), windowHeight * (11 / 20));
-    text(getScore(gameState, '1', 1), (windowHeight * 1.5) / 3 + ((windowHeight * 1.5) / 18) + 1 * ((windowHeight * 1.5) / 9), windowHeight * (11 / 20));
-    text(getScore(gameState, '1', 2), (windowHeight * 1.5) / 3 + ((windowHeight * 1.5) / 18) + 2 * ((windowHeight * 1.5) / 9), windowHeight * (11 / 20));
-
-    text(getScore(gameState, '2', 0), (windowHeight * 1.5) / 3 + ((windowHeight * 1.5) / 18) + 0 * ((windowHeight * 1.5) / 9), windowHeight * (9 / 20));
-    text(getScore(gameState, '2', 1), (windowHeight * 1.5) / 3 + ((windowHeight * 1.5) / 18) + 1 * ((windowHeight * 1.5) / 9), windowHeight * (9 / 20));
-    text(getScore(gameState, '2', 2), (windowHeight * 1.5) / 3 + ((windowHeight * 1.5) / 18) + 2 * ((windowHeight * 1.5) / 9), windowHeight * (9 / 20));
-
-    textSize(windowHeight / 15);
-    text(getScore(gameState, '1', 0) + getScore(gameState, '1', 1) + getScore(gameState, '1', 2), (windowHeight * 1.5) / 6, windowHeight * (2 / 3));
-    text(getScore(gameState, '2', 0) + getScore(gameState, '2', 1) + getScore(gameState, '2', 2), (windowHeight * 1.5) * (5 / 6), windowHeight * (1 / 3));
-  } else {
-
+    for (let pn of [1,2]) { // pn is player number
+      var tempSum = 0;
+      var tempScore = 0;
+      textSize(windowHeight / 30);
+      for (let colN of [0,1,2]) {
+        tempScore = getScore(gameState, pn.toString(), colN);
+        tempSum += tempScore;
+        text(tempScore, halfWinH + (halfWinH / 6) + colN * (halfWinH / 3), halfWinH * (1.3 - pn/5));
+      }
+      textSize(windowHeight / 15);
+      text(tempSum, windowHeight * (pn - (3 / 4)), windowHeight * ( 1 - (pn / 3)));
+    }
   }
-
 }
 
 
@@ -525,28 +497,16 @@ function diceGlide(dice, player, frame) {
     yInit = windowHeight * (1 / 4) - windowHeight * diceSize;
   }
 
-  var xEnd, yEnd;
-  if (appState != 3) {
-    xEnd = boardScreenPos(fromLetterPos(currentGameState.charAt(3)), '1')[0];
-    yEnd = boardScreenPos(fromLetterPos(currentGameState.charAt(3)), '1')[1];
-  }else{
-    if (currentGameState.charAt(0) == myPlayer){
-      xEnd = boardScreenPos(fromLetterPos(currentGameState.charAt(3)), '2')[0];
-      yEnd = boardScreenPos(fromLetterPos(currentGameState.charAt(3)), '2')[1];
-    }else{
-      xEnd = boardScreenPos(fromLetterPos(currentGameState.charAt(3)), '1')[0];
-      yEnd = boardScreenPos(fromLetterPos(currentGameState.charAt(3)), '1')[1];
-    }
-    
-  }
-
+  var tempPlayer = '1';
+  if ((appState == 3) && (currentGameState.charAt(0) == myPlayer)) {
+    tempPlayer = '2';
+  }     
+  var [xEnd,yEnd] = boardScreenPos(fromLetterPos(currentGameState.charAt(3)), tempPlayer);
 
   var x = xEnd * distance + xInit * (1.0 - distance);
   var y = yEnd * distance + yInit * (1.0 - distance);
 
   image(diceImg(dice), x, y, (windowHeight * diceSize) * (1.0 + distance * 0.3), (windowHeight * diceSize) * (1.0 + distance * 0.3));
-  
-
 }
 
 // Animates the rolling of a die
